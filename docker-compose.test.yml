@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "pip install --no-cache-dir pytest pytest-cov fakeredis httpx && pytest app/tests/ -v --tb=short"
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      PYTHONPATH: /app
+    depends_on:
+      - redis
+    networks:
+      - test-network
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - test-network
+    ports:
+      - "6380:6379"
+
+networks:
+  test-network:
+    driver: bridge
