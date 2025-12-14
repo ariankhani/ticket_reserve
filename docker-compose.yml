@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8020:8020"
+    volumes:
+      # Mount the entire project directory to the container
+      # This allows for hot-reloading when you change code
+      - ./:/app
+    command: >
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8020 --reload"
+    environment:
+      # point app to the redis service inside the compose network
+      REDIS_URL: "redis://redis:6379/0"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "celery -A app.tasks.celery_app worker --loglevel=info"
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

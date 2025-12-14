@@ -1,0 +1,32 @@
+# Use a lightweight Python image
+FROM python:3.12-slim
+
+# Install system dependencies (e.g. libmagic for python-magic)
+RUN apt-get update && apt-get install -y libmagic1 && rm -rf /var/lib/apt/lists/*
+
+# Prevent Python from writing .pyc files and enable unbuffered logging
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Set the working directory
+WORKDIR /app
+
+# Copy pyproject so a dependency manager can install packages
+COPY pyproject.toml .
+
+# Install runtime dependencies explicitly so CLI commands are available
+RUN pip install --upgrade pip \
+	&& pip install "fastapi>=0.124.4" "uvicorn>=0.38.0" "celery>=5.6.0" "redis>=7.1.0" "sqlalchemy>=2.0.45" "pydantic>=2.12.5"
+
+# Create a static folder (if you need to serve static files)
+RUN mkdir -p static
+
+# Copy the rest of your application code
+COPY . /app
+
+# Expose the port on which your app will run
+EXPOSE 8000
+
+# Run the application using uvicorn.
+# Adjust the module path according to your project structure.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8020"]

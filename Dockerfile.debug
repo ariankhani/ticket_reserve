@@ -1,0 +1,33 @@
+# Use a lightweight Python image
+FROM python:3.12-slim
+
+# Install system dependencies (e.g. libmagic for python-magic)
+RUN apt-get update && apt-get install -y libmagic1 && rm -rf /var/lib/apt/lists/*
+
+# Prevent Python from writing .pyc files and enable unbuffered logging
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Set the working directory
+WORKDIR /app
+
+# Copy and install dependencies
+COPY requirements-dev.txt .
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements-dev.txt
+
+# Create a static folder (if you need to serve static files)
+RUN mkdir -p static
+
+# Copy the rest of your application code
+COPY . /app
+
+# Copy startup.sh and set execute permission
+COPY startup.sh /app/startup.sh
+RUN chmod +x /app/startup.sh
+
+# Expose the port on which your app will run
+EXPOSE 8000
+
+# Run the application using startup.sh (if you intend to use it)
+CMD ["./startup.sh"]
