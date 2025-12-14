@@ -1,80 +1,114 @@
-# Ticket Fast API
+# 🎟 Ticket FastAPI
 
-Simple ticket booking service (FastAPI) with background tasks and Redis locking.
+A minimal, concurrency-safe ticket booking service built with **FastAPI**, **SQLite**, **Redis locking**, and **Celery background tasks**.
 
-This repository implements a minimal ticket booking system exposing a HTTP API, a background Celery task to finalize bookings, and a locking mechanism (Redis) to protect against race conditions when multiple clients try to book the last tickets concurrently. The test-suite exercises the API, service layer, Celery tasks, Redis locking, and race conditions.
+This project demonstrates how to correctly handle **race conditions** (multiple users booking the last available ticket at the same time) while keeping the API responsive using asynchronous background processing.
 
-**What's included**
-- **API**: FastAPI application exposing endpoints to create events, create bookings, and view reports.
-- **Database**: SQLAlchemy (SQLite by default) models for `Event` and `Booking`.
-- **Locking**: Redis-based locks (used when creating bookings to avoid overselling).
-- **Background work**: Celery tasks for finalizing bookings (simulates PDF/email issuance).
-- **Tests**: A complete pytest test-suite covering models, services, Redis behavior, Celery tasks, API endpoints and a race-condition integration test.
+---
 
-**Important:** This README only documents running the project and tests using Docker (the repository contains helpful Docker configurations and a dedicated Docker test flow).
+## ✨ Features
 
-**Quick links**
-- **Code**: `app/` directory contains the application modules and tests under `app/tests/`.
+- **FastAPI REST API**
+  - Create events
+  - Book tickets
+  - View event statistics
+- **Database**
+  - SQLAlchemy models (`Event`, `Booking`)
+  - SQLite by default (simple and portable)
+- **Concurrency protection**
+  - Redis-based locks to prevent over-booking
+  - Atomic database updates
+- **Background processing**
+  - Celery task to finalize bookings (simulates PDF/email issuance)
+- **Test coverage**
+  - API endpoints
+  - Service layer
+  - Redis locking behavior
+  - Celery tasks
+  - Race-condition integration tests
 
-**Prerequisites**
-- Docker and Docker Compose (modern `docker compose` command).
+---
 
-**Run the application (Docker-only)**
+## 📂 Project Structure
 
-1. Build and start the application services (this will start the FastAPI app, Redis and any other configured services):
+```
+app/
+├── main.py            # FastAPI application entrypoint
+├── models.py          # SQLAlchemy models
+├── schemas.py         # Pydantic schemas
+├── services/          # Business logic
+├── tasks/             # Celery tasks
+└── tests/             # Pytest test-suite
+```
+
+---
+
+## 🧰 Prerequisites
+
+- Docker
+- Docker Compose (`docker compose`)
+
+No local Python or Redis installation is required.
+
+---
+
+## ▶ Run the Application (Docker)
 
 ```bash
 docker compose up --build -d
 ```
 
-2. Check logs for the app service:
+API URL: http://localhost:8000  
+Swagger UI: http://localhost:8000/docs
 
-```bash
-docker compose logs -f
-```
+---
 
-3. Stop and remove the containers, networks and volumes created by Compose:
-
-```bash
-docker compose down
-```
-
-Notes:
-- The FastAPI app is configured in `app/main.py` and served by the container built from the repository. API is available at http://localhost:8000 by default when running locally with the included compose config.
-- The compose stacks in this repository include an additional `docker-compose.test.yml` used specifically for running the test-suite inside a containerized environment.
-
-**Run tests (Docker)**
-
-This project includes a `Makefile` with convenient test targets. The `make test-docker` target launches a throwaway container that installs test dependencies and runs pytest inside Docker, isolating test runs from your host environment.
-
-From the repository root run:
+## 🧪 Run Tests (Docker)
 
 ```bash
 make test-docker
 ```
 
-What `make test-docker` does:
-- Builds the `ticket_fast_api-test` image (uses `Dockerfile.test`), then runs `pytest` against `app/tests/` inside the container.
-- It also starts a temporary Redis service (via `docker-compose.test.yml`) so Redis-backed tests run against a real Redis instance.
-- The command is configured to abort on the first failing test container and to propagate the test exit code.
+---
 
-If you prefer to run the entire test-suite directly with `docker compose` (same effect):
+## 🔐 Concurrency Model
 
-```bash
-docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test
-```
+- Redis lock per event
+- Atomic capacity update
+- Guaranteed no over-booking
 
-Useful `Makefile` targets
-- **`make test`**: run pytest locally (non-Docker). Useful for quick runs inside a dev environment.
-- **`make test-docker`**: run the test-suite inside Docker (recommended for CI or when you don't want to install test deps locally).
-- **`make clean-test`**: remove test artifacts such as `test_ticket.db` and pytest cache.
+⚠️ SQLite is for demo/testing. Use PostgreSQL in production.
 
-Troubleshooting
-- If `docker compose up` hangs or fails due to port conflicts, ensure nothing else is listening on port 8000.
-- If Docker containers fail to start due to missing permissions when installing Python packages, run Docker commands as a user with appropriate privileges or configure a non-root build stage (the provided Dockerfiles install packages as root inside the container, which is normal).
-- For Redis-specific tests we use `fakeredis` mocks in unit tests and a real Redis instance when using `docker-compose.test.yml`.
+---
 
-CI Suggestions
-- Use `make test-docker` inside your CI job to run the full, hermetic test-suite. That ensures Redis and other services are started exactly as in local testing.
+## 🧠 Background Tasks
 
-Want me to also add a short `docker compose` snippet tailored for production or add healthchecks? Reply and I'll add it.
+Booking API responds immediately (200 OK)
+
+Finalization (PDF/email simulation) happens asynchronously via Celery
+
+Booking status transitions: PENDING → FINALIZED
+
+## 🧩 CI Recommendation
+
+Use:
+
+make test-docker
+
+This guarantees:
+
+Real Redis
+
+Identical environment locally and in CI
+
+No dependency leaks from host machine
+
+📌 Notes
+
+Redis is required for locking (included in Docker setup)
+
+Fakeredis is used in unit tests
+
+Real Redis is used in integration tests
+
+
